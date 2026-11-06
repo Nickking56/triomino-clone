@@ -1,6 +1,6 @@
-# Triangle Reckoning
+# Triomino clone
 
-**[▶ Play it now in your browser](https://nickking56.github.io/triomino-clone/)** —
+**[▶ Play it now in your browser](https://nickking56.github.io/triomino-clone/)** 
 
 ## Features
 
@@ -10,25 +10,6 @@
 - Light and dark themes
 - Implements the Deluxe Tri-Ominos rule set: 56 tiles, first to 400 points over several rounds, triple-opens-the-round, bridge/hexagon bonuses, buying from the pile when stuck, and proper blocked-game / going-out scoring (see the "Official rules" panel in-app for the full writeup)
 
-## Running it
-
-Clone the repo and open `index.html` in a browser — that's it.
-
-To serve it locally instead (useful if your browser blocks local file access for some features):
-
-```bash
-npx serve .
-# or
-python -m http.server
-```
-
-### Deploying your own copy
-
-This is a static site, so it works as-is on GitHub Pages, Netlify, Vercel, or any static host. For GitHub Pages:
-
-1. Fork or clone this repo to your own GitHub account.
-2. In that repo's **Settings → Pages**, set **Source** to **Deploy from a branch**, pick the `main` branch and `/ (root)` folder, and save.
-3. It'll be live at `https://<your-username>.github.io/<repo-name>/` within a minute or two.
 
 ## How it works
 
