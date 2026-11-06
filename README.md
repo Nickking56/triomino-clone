@@ -1,5 +1,7 @@
 # Triangle Reckoning
 
+**[▶ Play it now in your browser](https://nickking56.github.io/triomino-clone/)** — no install, no sign-up.
+
 A browser-based Tri-Ominoes clone. Play solo against a bot, offline, with a one-click "best move" hint that scores every legal play in your hand before you commit to it.
 
 It's a single `index.html` file — no build step, no dependencies, nothing to install.
