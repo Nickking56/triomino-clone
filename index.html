@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Triangle Reckoning</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+  :root{
+    --bg:#eef1e9;
+    --surface:#ffffff;
+    --panel:#f4f1e6;
+    --panel-line:#dcd6c4;
+    --accent:#a9761f;
+    --accent-ink:#5c4714;
+    --accent2:#1f7a6f;
+    --accent2-ink:#0f4a43;
+    --text:#1b2420;
+    --text-dim:#5c6b64;
+    --tile-face:#fbf8f0;
+    --tile-line:#c9bd98;
+    --valid-glow:#2f8f83;
+    --danger:#b4432f;
+    --shadow: 0 10px 30px -12px rgba(20,30,25,.35);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1614;
+      --surface:#16211e;
+      --panel:#19241f;
+      --panel-line:#2a382f;
+      --accent:#e3b14a;
+      --accent-ink:#2a1d05;
+      --accent2:#4bc2b2;
+      --accent2-ink:#06201c;
+      --text:#eef2ee;
+      --text-dim:#9bb0a7;
+      --tile-face:#20302a;
+      --tile-line:#3a4d41;
+      --valid-glow:#4bc2b2;
+      --danger:#e2715b;
+      --shadow: 0 10px 34px -10px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1614;
+    --surface:#16211e;
+    --panel:#19241f;
+    --panel-line:#2a382f;
+    --accent:#e3b14a;
+    --accent-ink:#2a1d05;
+    --accent2:#4bc2b2;
+    --accent2-ink:#06201c;
+    --text:#eef2ee;
+    --text-dim:#9bb0a7;
+    --tile-face:#20302a;
+    --tile-line:#3a4d41;
+    --valid-glow:#4bc2b2;
+    --danger:#e2715b;
+    --shadow: 0 10px 34px -10px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    overflow:hidden;
+  }
+  .app{
+    display:flex; flex-direction:column; height:100%;
+    padding-inline: max(16px, env(safe-area-inset-left,0px)) max(16px, env(safe-area-inset-right,0px));
+  }
+
+  header{
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    padding-block: 14px 10px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:1.5rem; margin:0;
+    letter-spacing:.01em;
+  }
+  h1 small{display:block; font-family:'IBM Plex Sans'; font-weight:500; font-size:.62rem; letter-spacing:.14em; color:var(--text-dim); text-transform:uppercase; margin-top:2px;}
+  .spacer{flex:1;}
+  .iconbtn{
+    border:1px solid var(--panel-line); background:var(--surface); color:var(--text);
+    border-radius:8px; padding:7px 11px; font-size:.78rem; font-family:inherit; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .iconbtn:hover{border-color:var(--accent);}
+  .iconbtn:focus-visible, button:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent2); outline-offset:2px;}
+
+  main{
+    flex:1; display:flex; gap:14px; min-height:0; padding-block:12px;
+  }
+  .sidebar{
+    width:230px; flex:none; display:flex; flex-direction:column; gap:10px; overflow-y:auto;
+  }
+  @media (max-width: 760px){
+    main{flex-direction:column;}
+    .sidebar{width:100%; flex-direction:row; flex-wrap:wrap; overflow:visible;}
+    .card{flex:1 1 150px;}
+  }
+
+  .card{
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:12px;
+    padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .card h2{
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.12em; color:var(--text-dim);
+    margin:0 0 8px; font-weight:600;
+  }
+  .scorerow{display:flex; justify-content:space-between; align-items:baseline; padding:4px 0;}
+  .scorerow + .scorerow{border-top:1px dashed var(--panel-line);}
+  .scorerow .who{font-weight:600; font-size:.88rem;}
+  .scorerow .num{font-family:'IBM Plex Mono'; font-variant-numeric:tabular-nums; font-size:1.3rem; font-weight:600;}
+  .who.you{color:var(--accent2-ink);}
+  .who.bot{color:var(--danger);}
+  .turnflag{
+    display:inline-block; font-size:.62rem; letter-spacing:.08em; text-transform:uppercase;
+    padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle;
+    background:var(--accent2); color:var(--accent2-ink); font-weight:700;
+  }
+  .meta{color:var(--text-dim); font-size:.78rem; display:flex; justify-content:space-between; padding:3px 0;}
+  .meta b{color:var(--text); font-family:'IBM Plex Mono'; font-weight:600;}
+
+  .log{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; font-size:.76rem; color:var(--text-dim);}
+  .log li b{color:var(--text); font-family:'IBM Plex Mono';}
+  .log li{border-bottom:1px dashed var(--panel-line); padding-bottom:5px;}
+  .log li:last-child{border-bottom:none;}
+
+  .hintbtn{
+    width:100%; border:1px solid var(--accent); background:transparent; color:var(--accent-ink);
+    border-radius:9px; padding:10px; font-family:inherit; font-weight:600; font-size:.82rem; cursor:pointer;
+  }
+  :root:not([data-theme="light"]) .hintbtn, :root[data-theme="dark"] .hintbtn{color:var(--accent);}
+  .hintbtn:hover{background:var(--accent); color:var(--accent-ink);}
+  .hintbtn:disabled{opacity:.4; cursor:not-allowed;}
+  .playbtn{
+    width:100%; border:none; background:var(--accent2); color:var(--accent2-ink);
+    border-radius:9px; padding:10px; font-family:inherit; font-weight:700; font-size:.82rem; cursor:pointer;
+    margin-top:8px;
+  }
+  .playbtn:disabled{opacity:.35; cursor:not-allowed;}
+  .hintline{font-size:.76rem; color:var(--text-dim); margin-top:8px; line-height:1.4;}
+  .hintline b{color:var(--text);}
+
+  .boardwrap{
+    flex:1; position:relative; border-radius:14px; overflow:hidden;
+    background:
+      radial-gradient(ellipse at 30% 0%, color-mix(in srgb, var(--accent2) 7%, transparent), transparent 55%),
+      var(--surface);
+    border:1px solid var(--panel-line); box-shadow:var(--shadow);
+    min-height:260px;
+  }
+  svg#board{width:100%; height:100%; display:block; cursor:grab;}
+  svg#board.dragging{cursor:grabbing;}
+  .boardhint{
+    position:absolute; top:10px; left:12px; font-size:.7rem; color:var(--text-dim);
+    background:color-mix(in srgb, var(--surface) 80%, transparent); padding:4px 9px; border-radius:20px;
+    border:1px solid var(--panel-line);
+  }
+  .zoomctl{position:absolute; bottom:10px; right:10px; display:flex; flex-direction:column; gap:6px;}
+  .zoomctl button{width:30px; height:30px; border-radius:8px; border:1px solid var(--panel-line); background:var(--surface); color:var(--text); font-size:1rem; cursor:pointer; line-height:1;}
+
+  footer.tray{
+    border-top:1px solid var(--panel-line); padding-block:10px max(10px, env(safe-area-inset-bottom,0px));
+    display:flex; align-items:center; gap:14px;
+  }
+  .trayhand{
+    display:flex; gap:8px; overflow-x:auto; padding:6px 2px; flex:1;
+  }
+  .trayinfo{font-size:.72rem; color:var(--text-dim); flex:none; width:98px; text-align:right; line-height:1.5;}
+  .trayinfo b{display:block; color:var(--text); font-family:'IBM Plex Mono'; font-size:1rem;}
+
+  .tri{ cursor:pointer; }
+  .tri .face{ fill:var(--tile-face); stroke:var(--tile-line); stroke-width:1.5; transition:transform .12s ease; }
+  .tri.selected .face{ stroke:var(--accent2); stroke-width:2.5; }
+  .tri text{ font-family:'IBM Plex Mono'; font-weight:600; fill:var(--text); }
+  .tri.selected{ transform:translateY(-6px); }
+  .tri.suggested .face{ stroke:var(--accent); stroke-width:3; }
+  .tri.disabled .face{ opacity:.35; }
+
+  .gridcell{ fill:transparent; stroke:var(--panel-line); stroke-width:1; cursor:pointer; transform-box:fill-box; }
+  .gridcell:hover{ stroke:var(--text-dim); }
+  .gridcell.candidate{ fill:color-mix(in srgb, var(--valid-glow) 16%, transparent); stroke:var(--valid-glow); stroke-width:2; stroke-dasharray:4 3; }
+  .gridcell.candidate:hover{ fill:color-mix(in srgb, var(--valid-glow) 32%, transparent); }
+  .gridcell.invalid{ fill:color-mix(in srgb, var(--danger) 30%, transparent)!important; stroke:var(--danger)!important; stroke-width:2.5!important; animation: shakecell .4s ease; }
+  .ghost .face{ fill:color-mix(in srgb, var(--accent) 28%, transparent); stroke:var(--accent); stroke-width:2.5; }
+  .ghost text{ fill:var(--accent-ink); }
+  @keyframes shakecell{
+    0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-4px); } 75%{ transform:translateX(4px); }
+  }
+  .just-placed{ animation: popin .3s ease; transform-origin:center; }
+  @keyframes popin{
+    0%{ transform:scale(.55); opacity:.3; } 70%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); }
+  }
+  g.tri{ transform-box: fill-box; }
+
+  .toast{
+    position:absolute; top:12px; right:12px; left:auto; max-width:280px;
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:10px;
+    padding:9px 12px; font-size:.78rem; box-shadow:var(--shadow); transition:opacity .4s;
+  }
+  .overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(2px);
+  }
+  .overlaycard{ background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:28px 30px; text-align:center; box-shadow:var(--shadow); max-width:320px; }
+  .overlaycard h2{ font-family:'Fraunces'; font-size:1.4rem; margin:0 0 6px; text-transform:none; letter-spacing:0; color:var(--text); font-weight:700;}
+  .overlaycard p{color:var(--text-dim); font-size:.85rem; margin:0 0 16px;}
+  .overlaycard button{ background:var(--accent2); color:var(--accent2-ink); border:none; border-radius:9px; padding:10px 20px; font-weight:700; cursor:pointer; font-family:inherit;}
+  [hidden]{display:none!important;}
+  .rules{font-size:.72rem; color:var(--text-dim); line-height:1.5;}
+  .rules summary{cursor:pointer; font-weight:600; color:var(--text); font-size:.74rem;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>Triangle Reckoning<small>Tri-ominoes &middot; solo vs. bot</small></h1>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="themeBtn" title="Toggle theme">&#9680; Theme</button>
+    <button class="iconbtn" id="newGameBtn">&#9851; New Game</button>
+  </header>
+
+  <main>
+    <div class="sidebar">
+      <div class="card">
+        <h2>Score &middot; first to 400</h2>
+        <div class="scorerow"><span class="who you">You<span id="turnYou" class="turnflag" hidden>turn</span></span><span class="num" id="scoreYou">0</span></div>
+        <div class="scorerow"><span class="who bot">Bot<span id="turnBot" class="turnflag" hidden>turn</span></span><span class="num" id="scoreBot">0</span></div>
+      </div>
+      <div class="card">
+        <h2>Table</h2>
+        <div class="meta"><span>Round</span><b id="metaRound">1</b></div>
+        <div class="meta"><span>Pile</span><b id="metaBoneyard">0</b></div>
+        <div class="meta"><span>Your tiles</span><b id="metaYouCount">0</b></div>
+        <div class="meta"><span>Bot tiles</span><b id="metaBotCount">0</b></div>
+      </div>
+      <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+        <h2>Best move</h2>
+        <button class="hintbtn" id="hintBtn">Show best move</button>
+        <div class="hintline" id="hintLine">Find the highest-scoring play available in your hand right now.</div>
+        <button class="playbtn" id="playHintBtn" hidden>Play this move</button>
+        <button class="playbtn" id="buyBtn" hidden style="background:var(--accent); color:var(--accent-ink);">Buy a tile</button>
+      </div>
+      <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+        <h2>Log</h2>
+        <ul class="log" id="logList"></ul>
+      </div>
+      <details class="rules card">
+        <summary>Official rules (Deluxe Tri-Ominos)</summary>
+        <div style="margin-top:8px;">
+          First to <b>400 points</b> wins the match, played over several rounds. Each side is dealt 9 tiles; the rest form the pile.<br><br>
+          <b>Opening:</b> whoever holds the highest triple (5-5-5 highest, down to 1-1-1) opens with it for the tile's value +10 &mdash; or, if that same player also holds 0-0-0, they open with that instead for +40 (0 + a 30pt triple-zero bonus + the normal 10pt bonus). With no triple in either hand, the single highest-value tile opens instead, for no bonus.<br><br>
+          Each turn, join one tile onto a matching side already on the table &mdash; if you have a match, you must play it. A tile scores the sum of its three numbers, plus:<br>
+          &bull; <b>Bridge</b> (+40) &mdash; matches 2 sides at once, or matches 1 side whose opposite point already lines up with a value fixed elsewhere on the table.<br>
+          &bull; <b>Hexagon</b> (+50) &mdash; closes a ring of 6 tiles around a point.<br><br>
+          No match? Buy from the pile, &minus;5 points each, as many times as needed until you can play. Still stuck once the pile runs dry &rarr; &minus;10 and your turn ends.<br><br>
+          <b>Round ends</b> when a hand empties (that player scores +25 plus the pips left in the other hand, loser keeps their score) or both sides are blocked with the pile empty (whoever holds the <i>fewest tiles</i> adds the other's pip total and subtracts their own, no bonus). Scores carry across rounds until someone reaches 400.
+        </div>
+      </details>
+    </div>
+
+    <div class="boardwrap" id="boardWrap">
+      <svg id="board" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="boardhint">click a tile, then a grid cell &middot; drag to pan &middot; scroll to zoom</div>
+      <div class="zoomctl">
+        <button id="zoomIn">+</button>
+        <button id="zoomOut">&minus;</button>
+      </div>
+      <div class="toast" id="toastEl" hidden></div>
+      <div class="overlay" id="endOverlay" hidden>
+        <div class="overlaycard">
+          <h2 id="endTitle">Round over</h2>
+          <p id="endBody"></p>
+          <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button id="endNextRound">Next round</button>
+            <button id="endNewMatch" style="background:transparent; border:1px solid var(--panel-line); color:var(--text);">New match</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="tray">
+    <div class="trayhand" id="handTray"></div>
+    <div class="trayinfo">Select a tile,<br>then a glowing cell<br>to place it.<b id="turnLabel">Your turn</b></div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- geometry ----------
+  var EDGE = 64, H = EDGE*Math.sqrt(3)/2;
+  // Grid radius: a straight chain of every tile in the pile would span well under 28 cells
+  // from the start in one direction, so a diamond of radius 34 around the center leaves
+  // margin on every side even in that worst case.
+  var GRID_R = 34;
+  var CENTER_I = 0, CENTER_J = 0;
+  function allGridCells(){
+    var cells = [];
+    for(var j=-GRID_R;j<=GRID_R;j++){
+      var rem = GRID_R - Math.abs(j);
+      for(var i=-rem;i<=rem;i++){
+        cells.push({type:'U', i:i, j:j});
+        cells.push({type:'D', i:i, j:j});
+      }
+    }
+    return cells;
+  }
+  function vkey(i,j){ return i+","+j; }
+  function vpos(i,j){ return { x: i*EDGE + j*(EDGE/2), y: j*H }; }
+  function cellKey(type,i,j){ return type+":"+i+","+j; }
+  // Both branches must list vertices in the same winding direction (clockwise here) —
+  // legalRotation assigns a tile's 3 values to these 3 slots via cyclic rotation only
+  // (no reflection, matching a physical tile), so a wound-inconsistent list would silently
+  // test a mirrored rotation on one cell type and miss otherwise-legal matches.
+  function cellVerts(type,i,j){
+    if(type==='U') return [[i,j],[i+1,j],[i,j+1]];
+    return [[i+1,j],[i+1,j+1],[i,j+1]];
+  }
+  function cellNeighbors(type,i,j){
+    if(type==='U') return [{type:'D',i:i,j:j-1},{type:'D',i:i-1,j:j},{type:'D',i:i,j:j}];
+    return [{type:'U',i:i,j:j},{type:'U',i:i+1,j:j},{type:'U',i:i,j:j+1}];
+  }
+  function rotate(vals,r){ return [vals[r%3], vals[(r+1)%3], vals[(r+2)%3]]; }
+  // 6 ways to lay a tile on a cell: 3 rotations of its printed order, plus 3 rotations of
+  // the mirrored order. A physical tile can't be flipped, but neither rules sheet calls
+  // that out, and players reasonably expect any matching edge to work — so we allow it.
+  function orientValues(values, rot){
+    var base = rot>=3 ? values.slice().reverse() : values;
+    return rotate(base, rot%3);
+  }
+
+  // ---------- tile set ----------
+  // the full 56-tile set, each triple given in clockwise corner order as supplied
+  var TILE_LIST = [
+    [0,0,0],[1,1,1],[2,2,2],[3,3,3],[4,4,4],[5,5,4],
+    [0,0,1],[1,1,2],[2,2,3],[3,3,4],[4,4,5],[5,5,5],
+    [0,0,2],[1,1,3],[2,2,4],[3,3,5],
+    [0,0,3],[1,1,4],[2,2,5],[3,4,4],
+    [0,0,4],[1,1,5],[2,3,3],[3,4,5],
+    [0,0,5],[1,2,2],[2,3,4],[3,5,5],
+    [0,1,1],[1,2,3],[2,3,5],
+    [0,1,2],[1,2,4],[2,4,4],
+    [0,1,3],[1,2,5],[2,4,5],
+    [0,1,4],[1,3,3],[2,5,5],
+    [0,1,5],[1,3,4],
+    [0,2,2],[1,3,5],
+    [0,2,3],[1,4,4],
+    [0,2,4],[1,4,5],
+    [0,2,5],[1,5,5],
+    [0,3,3],
+    [0,3,4],
+    [0,3,5],
+    [0,4,4],
+    [0,4,5],
+    [0,5,5]
+  ];
+  function buildTileSet(){
+    var tiles = [];
+    TILE_LIST.forEach(function(v, id){
+      tiles.push({ id:'t'+id, values:v.slice(), isTriple:(v[0]===v[1]&&v[1]===v[2]) });
+    });
+    return tiles;
+  }
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t=a[i]; a[i]=a[j]; a[j]=t;
+    }
+    return a;
+  }
+  function pipValue(values){ return values[0]+values[1]+values[2]; }
+  function pipSum(hand){ return hand.reduce(function(s,t){ return s+pipValue(t.values); },0); }
+
+  // ---------- game state ----------
+  var state = null;
+
+  function dealRound(keepScores){
+    var all = shuffle(buildTileSet());
+    var you = all.splice(0,9);
+    var bot = all.splice(0,9);
+    var prevScores = keepScores && state ? state.scores : { you:0, bot:0 };
+    var prevRound = keepScores && state ? state.round+1 : 1;
+    state = {
+      boneyard: all,
+      hands: { you: you, bot: bot },
+      board: new Map(),      // cellKey -> {type,i,j,tileId,values(assigned in cellVerts order)}
+      vertexValues: new Map(), // vkey -> number
+      scores: prevScores,
+      round: prevRound,
+      turn: 'you',
+      buysThisTurn: 0,
+      over: false,
+      matchOver: false,
+      log: keepScores && state ? state.log : [],
+      selectedTileId: null,
+      suggestion: null,
+      invalidFlashKey: null,
+      lastPlacedKey: null,
+      pendingOpening: null,
+      view: { x:0, y:0, scale:1 },
+    };
+    addLog('&mdash; Round '+state.round+' dealt &mdash;');
+    var opening = resolveOpeningMove();
+    if(opening.starter==='bot'){
+      placeOpeningTile(opening);
+      state.turn = 'you';
+      render();
+    } else {
+      // the human starter plays the mandated opening tile themselves, via the normal click-to-place flow
+      state.pendingOpening = opening;
+      state.turn = 'you';
+      var openTile = state.hands.you.find(function(t){ return t.id===opening.tileId; });
+      addLog('You hold the opening tile &mdash; play ['+openTile.values.join('-')+'] to start the round'+(opening.bonus?' for a +'+opening.bonus+' bonus':'')+'.');
+      render();
+    }
+  }
+  function newGame(){ dealRound(false); }
+  function nextRound(){ dealRound(true); }
+
+  function isTriple(values){ return values[0]===values[1] && values[1]===values[2]; }
+
+  // Highest triple on the table opens (5-5-5 beats 4-4-4, etc). That player scores the
+  // tile plus a 10pt bonus — or, if they also hold 0-0-0, may open with that instead for
+  // a 30+10=40pt bonus (always the better play when available). With no triple anywhere,
+  // the single highest-value tile in either hand opens instead, for no bonus.
+  function resolveOpeningMove(){
+    var triples = [];
+    ['you','bot'].forEach(function(who){
+      state.hands[who].forEach(function(t){
+        if(isTriple(t.values)) triples.push({ who:who, value:t.values[0], tile:t });
+      });
+    });
+    if(triples.length>0){
+      triples.sort(function(a,b){ return b.value-a.value; });
+      var top = triples[0];
+      // the opening tile is 0-0-0 whenever the starter holds it — whether because it's
+      // their only/highest triple, or because they elect to swap their higher triple for it
+      var zero = state.hands[top.who].find(function(t){ return t.values[0]===0 && t.values[1]===0 && t.values[2]===0; });
+      if(zero){
+        if(top.value>0) addLog((top.who==='you'?'You':'Bot')+' reveal the '+top.value+'-'+top.value+'-'+top.value+' to claim the triple-zero bonus instead.');
+        return { starter:top.who, tileId:zero.id, bonus:40, label:'triple-zero opener' };
+      }
+      return { starter:top.who, tileId:top.tile.id, bonus:10, label:'triple opener' };
+    }
+    var bestWho=null, bestTile=null;
+    ['you','bot'].forEach(function(who){
+      state.hands[who].forEach(function(t){
+        if(!bestTile || pipValue(t.values) > pipValue(bestTile.values)) { bestTile=t; bestWho=who; }
+      });
+    });
+    return { starter:bestWho, tileId:bestTile.id, bonus:0, label:null };
+  }
+
+  function placeOpeningTile(opening){
+    var hand = state.hands[opening.starter];
+    var idx = hand.findIndex(function(t){ return t.id===opening.tileId; });
+    var tile = hand[idx];
+    var verts = cellVerts('U', CENTER_I, CENTER_J);
+    var assigned = tile.values.slice();
+    for(var k=0;k<3;k++) state.vertexValues.set(vkey(verts[k][0],verts[k][1]), assigned[k]);
+    state.board.set(cellKey('U',CENTER_I,CENTER_J), { type:'U', i:CENTER_I, j:CENTER_J, tileId:tile.id, values:tile.values.slice(), assigned:assigned });
+    state.lastPlacedKey = cellKey('U',CENTER_I,CENTER_J);
+    hand.splice(idx,1);
+    var score = pipValue(tile.values) + opening.bonus;
+    state.scores[opening.starter] += score;
+    addLog((opening.starter==='you'?'You':'Bot')+' open with ['+tile.values.join('-')+']'+(opening.label?' &mdash; <b>'+opening.label+'</b>':'')+' for <b>'+score+'</b> pts.');
+  }
+
+  function addLog(msg){
+    state.log.unshift(msg);
+    if(state.log.length>40) state.log.pop();
+  }
+
+  // candidate empty cells adjacent to occupied board, plus the origin if board empty
+  function frontierCells(){
+    if(state.board.size===0) return [{type:'U', i:CENTER_I, j:CENTER_J}, {type:'D', i:CENTER_I, j:CENTER_J}];
+    var seen = new Map();
+    state.board.forEach(function(cell){
+      cellNeighbors(cell.type,cell.i,cell.j).forEach(function(n){
+        var k = cellKey(n.type,n.i,n.j);
+        if(!state.board.has(k) && !seen.has(k)) seen.set(k, n);
+      });
+    });
+    return Array.from(seen.values());
+  }
+
+  // returns a legal orientation index 0-5 (first found, see orientValues) or -1
+  function legalRotation(values, type, i, j){
+    if(state.board.has(cellKey(type,i,j))) return -1;
+    if(state.board.size===0){
+      if(i!==CENTER_I || j!==CENTER_J) return -1; // opening tile must start at the center
+    } else {
+      var hasNeighbor = cellNeighbors(type,i,j).some(function(n){ return state.board.has(cellKey(n.type,n.i,n.j)); });
+      if(!hasNeighbor) return -1;
+    }
+    var verts = cellVerts(type,i,j);
+    for(var r=0;r<6;r++){
+      var assigned = orientValues(values, r);
+      var ok = true;
+      for(var k=0;k<3;k++){
+        var existing = state.vertexValues.get(vkey(verts[k][0], verts[k][1]));
+        if(existing !== undefined && existing !== assigned[k]){ ok=false; break; }
+      }
+      if(ok) return r;
+    }
+    return -1;
+  }
+
+  function countOccupiedNeighbors(type,i,j){
+    return cellNeighbors(type,i,j).filter(function(n){ return state.board.has(cellKey(n.type,n.i,n.j)); }).length;
+  }
+  // true if all 6 triangles ringing vertex (a,b) are occupied, treating cell `extraKey` as occupied too
+  function hexCompletedAtVertex(a,b, extraKey){
+    var cells = [['U',a,b],['U',a-1,b],['U',a,b-1],['D',a-1,b],['D',a,b-1],['D',a-1,b-1]];
+    return cells.every(function(c){
+      var k = cellKey(c[0],c[1],c[2]);
+      return k===extraKey || state.board.has(k);
+    });
+  }
+  function presetVertexCount(type,i,j){
+    return cellVerts(type,i,j).filter(function(v){ return state.vertexValues.has(vkey(v[0],v[1])); }).length;
+  }
+  // hexagon (+50): matches all 3 sides and closes a 6-ring around one vertex.
+  // bridge (+40): matches 2 sides outright, OR matches 1 side while its opposite point
+  // already coincides with a value fixed by some other (non-adjacent) tile on the table.
+  function computeBonus(type,i,j){
+    var matchCount = countOccupiedNeighbors(type,i,j);
+    var extraKey = cellKey(type,i,j);
+    var hexCount = cellVerts(type,i,j).filter(function(v){ return hexCompletedAtVertex(v[0],v[1],extraKey); }).length;
+    if(hexCount>=1) return { bonus:50, label:'hexagon' };
+    if(matchCount>=2) return { bonus:40, label:'bridge' };
+    if(matchCount===1 && presetVertexCount(type,i,j)>=3) return { bonus:40, label:'bridge' };
+    return { bonus:0, label:null };
+  }
+
+  // all legal (cell, rotation, score) placements for a given tile across the current frontier
+  function movesForTile(values, tileId){
+    // when a specific tile is mandated to open the round, no other tile may be played yet
+    if(state.pendingOpening && state.pendingOpening.tileId !== tileId) return [];
+    var moves = [];
+    frontierCells().forEach(function(c){
+      var r = legalRotation(values, c.type, c.i, c.j);
+      if(r>=0){
+        var b = (state.board.size===0 && state.pendingOpening)
+          ? { bonus: state.pendingOpening.bonus, label: state.pendingOpening.label }
+          : computeBonus(c.type,c.i,c.j);
+        moves.push({ type:c.type, i:c.i, j:c.j, rotation:r, score: pipValue(values)+b.bonus, bonusLabel:b.label });
+      }
+    });
+    return moves;
+  }
+
+  // best move across an entire hand -> {tileId, type,i,j,rotation,score}
+  function bestMoveForHand(hand){
+    var best = null;
+    hand.forEach(function(tile){
+      movesForTile(tile.values, tile.id).forEach(function(m){
+        if(!best || m.score > best.score) best = Object.assign({tileId:tile.id}, m);
+      });
+    });
+    return best;
+  }
+
+  function placeTile(who, tileId, type, i, j, rotation){
+    var hand = state.hands[who];
+    var idx = hand.findIndex(function(t){ return t.id===tileId; });
+    if(idx<0) return false;
+    var tile = hand[idx];
+    var isOpening = state.board.size===0;
+    var b = (isOpening && state.pendingOpening) ? { bonus:state.pendingOpening.bonus, label:state.pendingOpening.label } : computeBonus(type,i,j);
+    var verts = cellVerts(type,i,j);
+    var assigned = orientValues(tile.values, rotation);
+    for(var k=0;k<3;k++) state.vertexValues.set(vkey(verts[k][0],verts[k][1]), assigned[k]);
+    state.board.set(cellKey(type,i,j), { type:type, i:i, j:j, tileId:tile.id, values:tile.values.slice(), assigned:assigned });
+    state.lastPlacedKey = cellKey(type,i,j);
+    hand.splice(idx,1);
+    if(isOpening) state.pendingOpening = null;
+    var score = pipValue(tile.values) + b.bonus;
+    state.scores[who] += score;
+    addLog((who==='you'?'You':'Bot')+(isOpening?' opens with [':' played [')+tile.values.join('-')+']'+(b.label?' &mdash; <b>'+b.label+'</b>':'')+' for <b>'+score+'</b> pts.');
+    return true;
+  }
+
+  function drawOne(who){
+    if(state.boneyard.length===0) return null;
+    var t = state.boneyard.pop();
+    state.hands[who].push(t);
+    return t;
+  }
+
+  var MATCH_TARGET = 400;
+
+  function endRound(reason, winner){
+    state.over = true;
+    var text;
+    if(winner){
+      var loser = winner==='you' ? 'bot' : 'you';
+      var loserSum = pipSum(state.hands[loser]);
+      var bonus = 25 + loserSum;
+      state.scores[winner] += bonus;
+      addLog((winner==='you'?'You':'Bot')+' went out: +25, plus '+loserSum+' from the other hand = <b>+'+bonus+'</b>.');
+      text = (winner==='you' ? 'You' : 'The bot') + ' emptied their hand and banked +'+bonus+'. Round '+state.round+' score &mdash; You '+state.scores.you+' &middot; Bot '+state.scores.bot+'.';
+    } else {
+      // blocked: the player with the FEWEST tiles left wins the round (ties broken by lowest value)
+      var yc = state.hands.you.length, bc = state.hands.bot.length;
+      var w = null;
+      if(yc !== bc) w = yc<bc ? 'you' : 'bot';
+      else {
+        var yv0 = pipSum(state.hands.you), bv0 = pipSum(state.hands.bot);
+        if(yv0 !== bv0) w = yv0<bv0 ? 'you' : 'bot';
+      }
+      if(w){
+        var l = w==='you' ? 'bot' : 'you';
+        var gain = pipSum(state.hands[l]) - pipSum(state.hands[w]);
+        state.scores[w] += gain;
+        addLog('Blocked round: '+(w==='you'?'you hold':'bot holds')+' the fewest tiles ('+state.hands[w].length+') and '+(gain>=0?'gain <b>+'+gain+'</b>':'lose <b>'+gain+'</b>')+'.');
+        text = 'Board blocked, pile empty. '+(w==='you'?'You':'Bot')+' held the fewest tiles and score the net difference. Round '+state.round+' score &mdash; You '+state.scores.you+' &middot; Bot '+state.scores.bot+'.';
+      } else {
+        text = 'Board blocked, pile empty, tied on tiles and value &mdash; no adjustment. Round '+state.round+' score &mdash; You '+state.scores.you+' &middot; Bot '+state.scores.bot+'.';
+      }
+    }
+
+    if(state.scores.you>=MATCH_TARGET || state.scores.bot>=MATCH_TARGET){
+      state.matchOver = true;
+      var matchWinner = state.scores.you>=state.scores.bot ? 'you' : 'bot';
+      addLog('&mdash; '+(matchWinner==='you'?'You':'Bot')+' crossed '+MATCH_TARGET+' points and win the match! &mdash;');
+      reason = 'Match over';
+      text += ' <b>'+(matchWinner==='you'?'You':'The bot')+' reached '+MATCH_TARGET+' and wins the match!</b>';
+    }
+
+    document.getElementById('endTitle').textContent = reason;
+    document.getElementById('endBody').innerHTML = text;
+    document.getElementById('endNextRound').hidden = !!state.matchOver;
+    document.getElementById('endOverlay').hidden = false;
+  }
+
+  function botTurn(){
+    var buys = 0;
+    var best = bestMoveForHand(state.hands.bot);
+    while(!best && state.boneyard.length>0){
+      drawOne('bot');
+      state.scores.bot -= 5;
+      buys++;
+      best = bestMoveForHand(state.hands.bot);
+    }
+    if(buys>0) addLog('Bot buys '+buys+' tile'+(buys>1?'s':'')+' (&minus;'+(buys*5)+').');
+    if(best){
+      placeTile('bot', best.tileId, best.type, best.i, best.j, best.rotation);
+      if(state.hands.bot.length===0){ render(); endRound('Round over', 'bot'); return; }
+    } else {
+      state.scores.bot -= 10;
+      addLog('Bot has no legal play and the pile is empty &mdash; passes (&minus;10).');
+      if(!bestMoveForHand(state.hands.you)){
+        render(); endRound('Round blocked', null); return;
+      }
+    }
+    state.turn = 'you';
+    state.buysThisTurn = 0;
+    state.selectedTileId = null;
+    state.suggestion = null;
+    render();
+  }
+
+  function youPlay(tileId, type, i, j, rotation){
+    placeTile('you', tileId, type, i, j, rotation);
+    state.selectedTileId = null;
+    state.suggestion = null;
+    if(state.hands.you.length===0){ render(); endRound('Round over', 'you'); return; }
+    state.turn = 'bot';
+    state.buysThisTurn = 0;
+    render();
+    setTimeout(botTurn, 650);
+  }
+
+  function youBuyTile(){
+    if(state.turn!=='you' || state.over) return;
+    if(bestMoveForHand(state.hands.you)) return; // must play if you can — no voluntary buying
+    if(state.boneyard.length===0) return;
+    drawOne('you');
+    state.scores.you -= 5;
+    state.buysThisTurn++;
+    addLog('You buy a tile (&minus;5).');
+    if(!bestMoveForHand(state.hands.you) && state.boneyard.length===0){
+      state.scores.you -= 10;
+      addLog('Pile is now empty and you still can\'t match &mdash; you pass (&minus;10).');
+      state.buysThisTurn = 0;
+      state.turn = 'bot';
+      render();
+      if(!bestMoveForHand(state.hands.bot)){
+        endRound('Round blocked', null); return;
+      }
+      setTimeout(botTurn, 650);
+      return;
+    }
+    render();
+  }
+
+  // called after a render when it's your turn: auto-pass only if you have no play AND can't buy (pile empty)
+  function maybeAutoPassYou(){
+    if(state.turn!=='you' || state.over) return;
+    if(bestMoveForHand(state.hands.you)) return;
+    if(state.boneyard.length>0 || state.buysThisTurn>0) return;
+    state.scores.you -= 10;
+    addLog('You have no legal play and the pile is empty &mdash; you pass (&minus;10).');
+    state.turn = 'bot';
+    render();
+    if(!bestMoveForHand(state.hands.bot) && state.boneyard.length===0){
+      endRound('Round blocked', null); return;
+    }
+    setTimeout(botTurn, 650);
+  }
+
+  // ---------- rendering ----------
+  var svg = document.getElementById('board');
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for(var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function triPath(type,i,j){
+    var v = cellVerts(type,i,j).map(function(p){ return vpos(p[0],p[1]); });
+    return 'M '+v[0].x+' '+v[0].y+' L '+v[1].x+' '+v[1].y+' L '+v[2].x+' '+v[2].y+' Z';
+  }
+  function centroid(type,i,j){
+    var v = cellVerts(type,i,j).map(function(p){ return vpos(p[0],p[1]); });
+    return { x:(v[0].x+v[1].x+v[2].x)/3, y:(v[0].y+v[1].y+v[2].y)/3 };
+  }
+
+  function attemptPlacement(type,i,j){
+    if(state.turn!=='you' || state.over) return;
+    if(state.board.has(cellKey(type,i,j))){ showToast('That space is already taken.'); return; }
+    if(!state.selectedTileId){ showToast('Pick a tile from your hand first.'); return; }
+    var tile = state.hands.you.find(function(t){ return t.id===state.selectedTileId; });
+    if(!tile) return;
+    if(state.pendingOpening && state.pendingOpening.tileId !== tile.id){
+      var openingTile = state.hands.you.find(function(t){ return t.id===state.pendingOpening.tileId; });
+      showToast('You must open the round with your ['+openingTile.values.join('-')+'].');
+      return;
+    }
+    var r = legalRotation(tile.values, type, i, j);
+    if(r<0){
+      var msg = (state.board.size===0)
+        ? 'The opening tile must be placed at the center of the board.'
+        : "That tile doesn't fit there — the shared corners don't match.";
+      showToast(msg);
+      state.invalidFlashKey = cellKey(type,i,j);
+      renderBoardSVG();
+      setTimeout(function(){ state.invalidFlashKey=null; renderBoardSVG(); }, 420);
+      return;
+    }
+    youPlay(tile.id, type, i, j, r);
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById('toastEl');
+    t.textContent = msg;
+    t.hidden = false;
+    t.style.opacity = '1';
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){
+      t.style.opacity = '0';
+      setTimeout(function(){ t.hidden = true; }, 400);
+    }, 1800);
+  }
+
+  // Default view frames the active area (played tiles + a comfortable ring around the
+  // center), not the whole diamond, so the board starts at a readable zoom; the full
+  // grid is still rendered and clickable underneath for panning/zooming out into.
+  var MIN_VIEW_RADIUS = 5;
+  function computeViewBounds(){
+    var cells = [];
+    for(var j=-MIN_VIEW_RADIUS;j<=MIN_VIEW_RADIUS;j++){
+      var rem = MIN_VIEW_RADIUS - Math.abs(j);
+      for(var i=-rem;i<=rem;i++){ cells.push({type:'U',i:i,j:j}); }
+    }
+    state.board.forEach(function(c){ cells.push(c); });
+    if(state.suggestion) cells.push(state.suggestion);
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    cells.forEach(function(cell){
+      cellVerts(cell.type,cell.i,cell.j).forEach(function(p){
+        var pt = vpos(p[0],p[1]);
+        minX=Math.min(minX,pt.x); maxX=Math.max(maxX,pt.x);
+        minY=Math.min(minY,pt.y); maxY=Math.max(maxY,pt.y);
+      });
+    });
+    return { minX:minX, maxX:maxX, minY:minY, maxY:maxY };
+  }
+
+  function applyBoardTransform(){
+    var g = document.getElementById('boardGroup');
+    if(g) g.setAttribute('transform', 'translate('+state.view.x+','+state.view.y+') scale('+state.view.scale+')');
+  }
+
+  function renderBoardSVG(){
+    svg.innerHTML = '';
+    var g = el('g', { id:'boardGroup' });
+    svg.appendChild(g);
+
+    var selTile = state.selectedTileId && state.hands.you.find(function(t){ return t.id===state.selectedTileId; });
+    var canClickBoard = state.turn==='you' && !state.over;
+    var gridLayer = el('g', { id:'gridLayer' });
+    g.appendChild(gridLayer);
+
+    allGridCells().forEach(function(cell){
+      var k = cellKey(cell.type,cell.i,cell.j);
+      if(state.board.has(k)) return;
+      var isLegalForSel = selTile && canClickBoard
+        && !(state.pendingOpening && state.pendingOpening.tileId !== selTile.id)
+        && legalRotation(selTile.values, cell.type,cell.i,cell.j) >= 0;
+      var cls = 'gridcell';
+      if(isLegalForSel) cls += ' candidate';
+      if(k===state.invalidFlashKey) cls += ' invalid';
+      var path = el('path', { d: triPath(cell.type,cell.i,cell.j), class:cls });
+      path.addEventListener('click', function(){ attemptPlacement(cell.type,cell.i,cell.j); });
+      gridLayer.appendChild(path);
+    });
+
+    state.board.forEach(function(cell){
+      var v = cellVerts(cell.type,cell.i,cell.j).map(function(p){ return vpos(p[0],p[1]); });
+      var isNew = state.lastPlacedKey === cellKey(cell.type,cell.i,cell.j);
+      var grp = el('g', { class:'tri placed'+(isNew?' just-placed':'') });
+      grp.appendChild(el('path', { d: triPath(cell.type,cell.i,cell.j), class:'face' }));
+      var c = centroid(cell.type,cell.i,cell.j);
+      cell.assigned.forEach(function(val, k){
+        var p = v[k];
+        var lx = p.x + (c.x-p.x)*0.42, ly = p.y + (c.y-p.y)*0.42;
+        var t = el('text', { x:lx, y:ly, 'font-size':15, 'text-anchor':'middle', 'dominant-baseline':'middle' });
+        t.textContent = val;
+        grp.appendChild(t);
+      });
+      g.appendChild(grp);
+    });
+    state.lastPlacedKey = null;
+
+    if(state.suggestion){
+      var s = state.suggestion;
+      var v = cellVerts(s.type,s.i,s.j).map(function(p){ return vpos(p[0],p[1]); });
+      var tile = state.hands.you.find(function(t){ return t.id===s.tileId; });
+      var assigned = orientValues(tile.values, s.rotation);
+      var grp = el('g', { class:'tri ghost' });
+      grp.appendChild(el('path', { d: triPath(s.type,s.i,s.j), class:'face' }));
+      var c2 = centroid(s.type,s.i,s.j);
+      assigned.forEach(function(val,k){
+        var p=v[k];
+        var lx = p.x + (c2.x-p.x)*0.42, ly = p.y + (c2.y-p.y)*0.42;
+        var t = el('text', { x:lx, y:ly, 'font-size':15, 'text-anchor':'middle', 'dominant-baseline':'middle' });
+        t.textContent = val;
+        grp.appendChild(t);
+      });
+      g.appendChild(grp);
+    }
+
+    var b = computeViewBounds();
+    var pad = EDGE*0.8;
+    var vw = (b.maxX-b.minX)+pad*2, vh = (b.maxY-b.minY)+pad*2;
+    svg.setAttribute('viewBox', (b.minX-pad)+' '+(b.minY-pad)+' '+vw+' '+vh);
+    applyBoardTransform();
+  }
+
+  function tileSVG(values, size, extraClass){
+    size = size||54;
+    var h = size*Math.sqrt(3)/2;
+    var pts = [[size/2,0],[0,h],[size,h]];
+    var c = { x:size/2, y:h*2/3 };
+    var s = el('svg', { width:size, height:h+4, viewBox:'0 0 '+size+' '+(h+4), class:'tri '+(extraClass||'') });
+    s.appendChild(el('path', { d:'M '+pts[0][0]+' '+pts[0][1]+' L '+pts[1][0]+' '+pts[1][1]+' L '+pts[2][0]+' '+pts[2][1]+' Z', class:'face' }));
+    values.forEach(function(val, k){
+      var p = pts[k];
+      var lx = p[0] + (c.x-p[0])*0.45, ly = p[1] + (c.y-p[1])*0.45;
+      var t = el('text', { x:lx, y:ly, 'font-size':13, 'text-anchor':'middle', 'dominant-baseline':'middle' });
+      t.textContent = val;
+      s.appendChild(t);
+    });
+    return s;
+  }
+
+  function renderHand(){
+    var tray = document.getElementById('handTray');
+    tray.innerHTML = '';
+    var canPlayAny = state.turn==='you' && !state.over;
+    state.hands.you.forEach(function(tile){
+      var cls = '';
+      if(tile.id===state.selectedTileId) cls += ' selected';
+      if(state.suggestion && state.suggestion.tileId===tile.id) cls += ' suggested';
+      var legal = canPlayAny && movesForTile(tile.values, tile.id).length>0;
+      if(!legal) cls += ' disabled';
+      var node = tileSVG(tile.values, 56, cls.trim());
+      node.style.flex = 'none';
+      node.addEventListener('click', function(id, isLegal){
+        return function(){
+          if(!canPlayAny) return;
+          if(!isLegal) return;
+          state.selectedTileId = (state.selectedTileId===id) ? null : id;
+          state.suggestion = null;
+          render();
+        };
+      }(tile.id, legal));
+      tray.appendChild(node);
+    });
+  }
+
+  function render(){
+    document.getElementById('scoreYou').textContent = state.scores.you;
+    document.getElementById('scoreBot').textContent = state.scores.bot;
+    document.getElementById('metaBoneyard').textContent = state.boneyard.length;
+    document.getElementById('metaYouCount').textContent = state.hands.you.length;
+    document.getElementById('metaBotCount').textContent = state.hands.bot.length;
+    document.getElementById('metaRound').textContent = state.round;
+    document.getElementById('turnYou').hidden = state.turn!=='you' || state.over;
+    document.getElementById('turnBot').hidden = state.turn!=='bot' || state.over;
+    document.getElementById('turnLabel').textContent = state.over ? 'Round over' : (state.turn==='you' ? 'Your turn' : "Bot's turn");
+
+    var logList = document.getElementById('logList');
+    logList.innerHTML = '';
+    state.log.slice(0,12).forEach(function(msg){
+      var li = document.createElement('li');
+      li.innerHTML = msg;
+      logList.appendChild(li);
+    });
+
+    var hintBtn = document.getElementById('hintBtn');
+    var playHintBtn = document.getElementById('playHintBtn');
+    var hintLine = document.getElementById('hintLine');
+    var buyBtn = document.getElementById('buyBtn');
+    var canAct = state.turn==='you' && !state.over;
+    var youHaveMove = canAct && !!bestMoveForHand(state.hands.you);
+
+    hintBtn.disabled = !canAct || !youHaveMove;
+    buyBtn.hidden = !canAct || youHaveMove || state.boneyard.length===0;
+    buyBtn.textContent = 'Buy a tile (−5)'+(state.buysThisTurn>0?' — bought '+state.buysThisTurn+' this turn':'');
+
+    if(!canAct){
+      hintLine.textContent = state.over ? 'Round is over.' : "It's the bot's turn.";
+      playHintBtn.hidden = true;
+    } else if(!youHaveMove){
+      hintLine.textContent = state.boneyard.length>0
+        ? "No match in hand — buy a tile from the pile (−5 each) until you can play."
+        : 'No match in hand and the pile is empty.';
+      playHintBtn.hidden = true;
+      state.suggestion = null;
+    } else if(state.suggestion){
+      var tile = state.hands.you.find(function(t){ return t.id===state.suggestion.tileId; });
+      hintLine.innerHTML = 'Play <b>['+tile.values.join('-')+']</b>'+(state.suggestion.bonusLabel?' &mdash; <b>'+state.suggestion.bonusLabel+'</b>':'')+' for <b>'+state.suggestion.score+'</b> points.';
+      playHintBtn.hidden = false;
+    } else if(state.pendingOpening){
+      var openTile = state.hands.you.find(function(t){ return t.id===state.pendingOpening.tileId; });
+      hintLine.innerHTML = 'You hold the opening tile. Select <b>['+openTile.values.join('-')+']</b> and play it at the center to start the round.';
+      playHintBtn.hidden = true;
+    } else {
+      hintLine.textContent = 'Find the highest-scoring play available in your hand right now.';
+      playHintBtn.hidden = true;
+    }
+
+    renderBoardSVG();
+    renderHand();
+
+    setTimeout(maybeAutoPassYou, 10);
+  }
+
+  // ---------- hint ----------
+  document.getElementById('hintBtn').addEventListener('click', function(){
+    var best = bestMoveForHand(state.hands.you);
+    if(!best){ document.getElementById('hintLine').textContent = 'No legal move in hand.'; return; }
+    state.suggestion = best;
+    state.selectedTileId = best.tileId;
+    render();
+  });
+  document.getElementById('playHintBtn').addEventListener('click', function(){
+    if(!state.suggestion) return;
+    var s = state.suggestion;
+    youPlay(s.tileId, s.type, s.i, s.j, s.rotation);
+  });
+  document.getElementById('buyBtn').addEventListener('click', youBuyTile);
+
+  // ---------- pan / zoom ----------
+  (function(){
+    var dragging=false, startX=0, startY=0, origX=0, origY=0;
+    svg.addEventListener('pointerdown', function(e){
+      if(e.target.closest('.candidate')) return;
+      dragging=true; startX=e.clientX; startY=e.clientY;
+      origX=state.view.x; origY=state.view.y;
+      svg.classList.add('dragging');
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      state.view.x = origX + (e.clientX-startX);
+      state.view.y = origY + (e.clientY-startY);
+      applyBoardTransform();
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
+      svg.addEventListener(ev, function(){ dragging=false; svg.classList.remove('dragging'); });
+    });
+    svg.addEventListener('wheel', function(e){
+      e.preventDefault();
+      var delta = e.deltaY<0 ? 1.08 : 0.92;
+      state.view.scale = Math.max(0.12, Math.min(2.6, state.view.scale*delta));
+      applyBoardTransform();
+    }, { passive:false });
+    document.getElementById('zoomIn').addEventListener('click', function(){ state.view.scale=Math.min(2.6,state.view.scale*1.15); applyBoardTransform(); });
+    document.getElementById('zoomOut').addEventListener('click', function(){ state.view.scale=Math.max(0.12,state.view.scale*0.87); applyBoardTransform(); });
+  })();
+
+  // ---------- theme ----------
+  (function(){
+    var root = document.documentElement;
+    function apply(mode){
+      if(mode==='system') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', mode);
+      try{ localStorage.setItem('triominoes-theme', mode); }catch(e){}
+    }
+    var saved='system';
+    try{ saved = localStorage.getItem('triominoes-theme') || 'system'; }catch(e){}
+    apply(saved);
+    document.getElementById('themeBtn').addEventListener('click', function(){
+      var current = root.getAttribute('data-theme') || 'system';
+      var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next = current==='light' ? 'dark' : current==='dark' ? 'light' : (dark ? 'light' : 'dark');
+      apply(next);
+    });
+  })();
+
+  // ---------- new game wiring ----------
+  document.getElementById('newGameBtn').addEventListener('click', function(){
+    document.getElementById('endOverlay').hidden = true;
+    newGame();
+  });
+  document.getElementById('endNextRound').addEventListener('click', function(){
+    document.getElementById('endOverlay').hidden = true;
+    nextRound();
+  });
+  document.getElementById('endNewMatch').addEventListener('click', function(){
+    document.getElementById('endOverlay').hidden = true;
+    newGame();
+  });
+
+  newGame();
+
+})();
+</script>
+</body>
+</html>
