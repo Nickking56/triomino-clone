@@ -1,12 +1,22 @@
 # Triangle Reckoning
 
-A browser-based Tri-Ominoes clone — play solo against a bot, offline, with a one-click "best move" hint that scores every legal play in your hand before you commit to it.
+A browser-based Tri-Ominoes clone. Play solo against a bot, offline, with a one-click "best move" hint that scores every legal play in your hand before you commit to it.
 
-No build step, no dependencies to install: it's a single `index.html` file.
+It's a single `index.html` file — no build step, no dependencies, nothing to install.
 
-## Play it
+## Features
 
-Open `index.html` directly in a browser, or serve the folder locally:
+- Full triangular-grid board, rendered live as tiles are placed
+- A bot opponent for offline, single-player games
+- "Show best move" — scans your whole hand and surfaces the highest-scoring legal play, including bridge and hexagon bonuses
+- Light and dark themes
+- Implements the Deluxe Tri-Ominos rule set: 56 tiles, first to 400 points over several rounds, triple-opens-the-round, bridge/hexagon bonuses, buying from the pile when stuck, and proper blocked-game / going-out scoring (see the "Official rules" panel in-app for the full writeup)
+
+## Running it
+
+Clone the repo and open `index.html` in a browser — that's it.
+
+To serve it locally instead (useful if your browser blocks local file access for some features):
 
 ```bash
 npx serve .
@@ -14,17 +24,18 @@ npx serve .
 python -m http.server
 ```
 
-### Host it on GitHub Pages
+### Deploying your own copy
 
-1. Push this repo to GitHub.
-2. In the repo settings, go to **Pages** → **Build and deployment** → **Source**, and pick **Deploy from a branch**.
-3. Choose the `main` branch and the `/ (root)` folder, then save.
-4. GitHub will publish it at `https://<your-username>.github.io/<repo-name>/` within a minute or two.
+This is a static site, so it works as-is on GitHub Pages, Netlify, Vercel, or any static host. For GitHub Pages:
 
-## Rules
-
-Implements the Deluxe Tri-Ominos rule set: 56 tiles, first to 400 points over several rounds, triple-opens-the-round, bridge/hexagon bonuses, buy-from-the-pile when you're stuck, and the proper blocked-game and going-out scoring. The in-app "Official rules" panel in the sidebar has the full writeup.
+1. Fork or clone this repo to your own GitHub account.
+2. In that repo's **Settings → Pages**, set **Source** to **Deploy from a branch**, pick the `main` branch and `/ (root)` folder, and save.
+3. It'll be live at `https://<your-username>.github.io/<repo-name>/` within a minute or two.
 
 ## How it works
 
 Everything — the triangular grid, tile matching, bot AI, and the scoring hint — lives in one HTML file: inline CSS, inline SVG rendering, and plain JavaScript with no external libraries. The board is modeled as a triangular lattice where each tile occupies a cell with three shared vertices; placement validity and the bridge/hexagon bonuses fall out of that shared-vertex structure rather than being special-cased.
+
+## License
+
+No license has been specified yet — all rights reserved by default. If you'd like to reuse this code, open an issue or reach out to the repo owner.
